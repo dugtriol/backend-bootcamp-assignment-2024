@@ -1,25 +1,56 @@
 services:
-  app:
-    build: ./
-    command: ./out
-    ports:
-      - '8082:8082'
-    depends_on:
-      - postgres
-    environment:
-      - POSTGRES_USER=test
-      - POSTGRES_PASSWORD=test
-      - POSTGRES_DB=test_db
-    volumes:
-      - ./data/postgres:/var/lib/postgresql/data
   postgres:
-    restart: always
+    container_name: postgres
+    restart: on-failure
     image: postgres:13
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_USER=test
-      - POSTGRES_PASSWORD=test
-      - POSTGRES_DB=test_db
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    env_file:
+      - .env
+    healthcheck:
+      test: [ "CMD-SHELL", "sh -c 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}'" ]
+      interval: 2s
+      timeout: 3s
+      retries: 3
     volumes:
-      - ./data/postgres:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+
+  migrations:
+    image: ghcr.io/kukymbr/goose-docker:3.19.2
+    restart: no
+    env_file:
+      - .env
+    volumes:
+      - ./pkg/db/migrations:/migrations
+    command: [ "-path", "/migrations", "-database",  "postgres://mydbuser:mydbpwd@database:5432/mydbname?sslmode=disable", "up", "3" ]
+    links:
+      - postgres
+    environment:
+      - GOOSE_DRIVER=postgres
+      - GOOSE_DBSTRING=host=postgres port=5432 user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB}
+      - GOOSE_VERBOSE=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+  app:
+    container_name: app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ./app
+    ports:
+      - 8082:8082
+    depends_on:
+      - postgres
+    env_file:
+      - .env
+    environment:
+      HOST_PORT: ":8082"
+      POSTGRES_DB_DSN: ${POSTGRES_DB_DSN}
+
+volumes:
+  postgres_data:

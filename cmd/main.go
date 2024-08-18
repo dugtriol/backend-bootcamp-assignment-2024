@@ -30,6 +30,7 @@ func main() {
 	log := setupLogger()
 	log.Info("initializing server", slog.String("address", cfg.Address))
 	log.Debug("logger debug mode enabled")
+	log.Info("cfg ", cfg)
 
 	// database
 	database, err := db.NewDB(ctx)
@@ -59,7 +60,7 @@ func main() {
 
 	router.Group(
 		func(r chi.Router) {
-			r.Get("/dummyLogin", auth.GetDummyLogin(ctx, log))
+			r.Get("/dummyLogin", auth.GetDummyLogin(log))
 			r.Post("/register", auth.Register(ctx, log, storage))
 			r.Post("/login", auth.Login(ctx, log, storage))
 		},
@@ -67,14 +68,14 @@ func main() {
 
 	router.Group(
 		func(r chi.Router) {
-			r.Use(auth.JWTValidateMW)
+			r.Use(auth.JWTValidateMW(log))
 
 			r.Post("/flat/create", flat.Create(ctx, log, storage))
 			r.Get("/house/{id}", house.GetList(ctx, log, storage))
 
 			r.Group(
 				func(c chi.Router) {
-					c.Use(auth.JWTValidateModeratorMW)
+					c.Use(auth.JWTValidateModeratorMW(log))
 
 					c.Post("/house/create", house.Create(ctx, log, storage))
 					c.Post("/flat/update", flat.Moderate(ctx, log, storage))
@@ -102,7 +103,6 @@ func main() {
 
 // env string
 func setupLogger() *slog.Logger {
-	var log *slog.Logger
-	log = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	return log
 }

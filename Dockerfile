@@ -1,4 +1,5 @@
-FROM golang:1.21-alpine
+FROM golang:alpine
+WORKDIR /app
 
 RUN go version
 ENV GOPATH=/
@@ -6,6 +7,6 @@ ENV GOPATH=/
 COPY ./ ./
 
 RUN go mod download
-RUN go build -o out ./cmd/main.go
+RUN go build -o app ./cmd/main.go
 
-CMD ["./out"]
+CMD ["./app"]

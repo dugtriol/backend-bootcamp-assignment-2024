@@ -1,5 +1,5 @@
 ifeq ($(POSTGRES_SETUP_TEST),)
-	POSTGRES_SETUP_TEST := user=test password=test dbname=postgres host=localhost port=5432 sslmode=disable
+	POSTGRES_SETUP_TEST := user=test password=test dbname=test_db host=localhost port=5432 sslmode=disable
 endif
 
 INTERNAL_PKG_PATH=$(CURDIR)/pkg
@@ -13,10 +13,18 @@ build:
 migration-create:
 	goose -dir "$(MIGRATION_FOLDER)" create "$(name)" sql
 
-.PHONY: test-migration-up
-test-migration-up:
+.PHONY: migration-up
+migration-up:
 	goose -dir "$(MIGRATION_FOLDER)" postgres "$(POSTGRES_SETUP_TEST)" up
 
-.PHONY: test-migration-down
-test-migration-down:
+.PHONY: migration-down
+migration-down:
 	goose -dir "$(MIGRATION_FOLDER)" postgres "$(POSTGRES_SETUP_TEST)" down
+
+.PHONY: run-app-up
+run-app-up:
+	docker compose up
+
+.PHONY: run-app-down
+run-app-down:
+	docker compose down

@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -91,7 +90,7 @@ func GetUserType(tokenString string) string {
 	return data.TypeUser
 }
 
-func GetDummyLogin(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+func GetDummyLogin(log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req dummyLoginRequest
 		var err error
@@ -146,51 +145,55 @@ func GetDummyLogin(ctx context.Context, log *slog.Logger) http.HandlerFunc {
 }
 
 // WTValidateMW Проверка на наличие jwt токена middleware ПЕРЕНЕСТИ
-func JWTValidateMW(next http.Handler, log *slog.Logger) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		requestId := middleware.GetReqID(r.Context())
-		header := r.Header.Get("Authorization")
-		arr := strings.Split(header, " ")
+func JWTValidateMW(log *slog.Logger) func(handler http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			requestId := middleware.GetReqID(r.Context())
+			header := r.Header.Get("Authorization")
+			arr := strings.Split(header, " ")
 
-		if len(arr) != 2 {
-			handlers.MakeErrorResponse(w, r, log, "invalid token", http.StatusUnauthorized, requestId, nil)
-			return
-		}
+			if len(arr) != 2 {
+				handlers.MakeErrorResponse(w, r, log, "invalid token", http.StatusUnauthorized, requestId, nil)
+				return
+			}
 
-		token := arr[1]
-		if !isAuthorized(token) {
-			handlers.MakeErrorResponse(w, r, log, "bad token", http.StatusUnauthorized, requestId, nil)
-			return
+			token := arr[1]
+			if !isAuthorized(token) {
+				handlers.MakeErrorResponse(w, r, log, "bad token", http.StatusUnauthorized, requestId, nil)
+				return
+			}
+			next.ServeHTTP(w, r)
 		}
-		next.ServeHTTP(w, r)
+		return http.HandlerFunc(fn)
 	}
-	return http.HandlerFunc(fn)
 }
 
 // JWTValidateModeratorMW Проверка на наличие токена модератора middleware ПЕРЕНЕСТИ
-func JWTValidateModeratorMW(next http.Handler, log *slog.Logger) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		requestId := middleware.GetReqID(r.Context())
-		header := r.Header.Get("Authorization")
-		arr := strings.Split(header, " ")
+func JWTValidateModeratorMW(log *slog.Logger) func(handler http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			requestId := middleware.GetReqID(r.Context())
+			header := r.Header.Get("Authorization")
+			arr := strings.Split(header, " ")
 
-		if len(arr) != 2 {
-			handlers.MakeErrorResponse(w, r, log, "unauthorized", http.StatusUnauthorized, requestId, nil)
-			return
-		}
+			if len(arr) != 2 {
+				handlers.MakeErrorResponse(w, r, log, "unauthorized", http.StatusUnauthorized, requestId, nil)
+				return
+			}
 
-		token := arr[1]
-		if !isAuthorized(token) {
-			handlers.MakeErrorResponse(w, r, log, "bad token", http.StatusUnauthorized, requestId, nil)
-			return
-		}
+			token := arr[1]
+			if !isAuthorized(token) {
+				handlers.MakeErrorResponse(w, r, log, "bad token", http.StatusUnauthorized, requestId, nil)
+				return
+			}
 
-		utype := GetUserType(token)
-		if utype != moderatorType {
-			handlers.MakeErrorResponse(w, r, log, "user is not moderator", http.StatusUnauthorized, requestId, nil)
-			return
+			utype := GetUserType(token)
+			if utype != moderatorType {
+				handlers.MakeErrorResponse(w, r, log, "user is not moderator", http.StatusUnauthorized, requestId, nil)
+				return
+			}
+			next.ServeHTTP(w, r)
 		}
-		next.ServeHTTP(w, r)
+		return http.HandlerFunc(fn)
 	}
-	return http.HandlerFunc(fn)
 }
