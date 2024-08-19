@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/handlers"
+	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/datasource/storage/structures"
+	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/services"
 	"github.com/dugtriol/backend-bootcamp-assignment-2024/pkg/response"
-	"github.com/dugtriol/backend-bootcamp-assignment-2024/pkg/storage/structures"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
 	"github.com/go-playground/validator/v10"
@@ -41,11 +41,11 @@ func Moderate(ctx context.Context, log *slog.Logger, moderation updateModeration
 		// decode
 		err = render.DecodeJSON(r.Body, &req)
 		if errors.Is(err, io.EOF) {
-			handlers.MakeErrorResponse(w, r, log, "request body is empty", http.StatusBadRequest, requestId, err)
+			services.MakeErrorResponse(w, r, log, "request body is empty", http.StatusBadRequest, requestId, err)
 			return
 		}
 		if err != nil {
-			handlers.MakeErrorResponse(
+			services.MakeErrorResponse(
 				w,
 				r,
 				log,
@@ -70,12 +70,12 @@ func Moderate(ctx context.Context, log *slog.Logger, moderation updateModeration
 
 		notChangedFlat, err := moderation.GetFlat(ctx, req.Id)
 		if err != nil {
-			handlers.MakeErrorResponse(w, r, log, "failed to find flat", http.StatusBadRequest, requestId, err)
+			services.MakeErrorResponse(w, r, log, "failed to find flat", http.StatusBadRequest, requestId, err)
 			return
 		}
 
 		if notChangedFlat.Status == on_moderate {
-			handlers.MakeErrorResponse(
+			services.MakeErrorResponse(
 				w,
 				r,
 				log,
@@ -89,13 +89,13 @@ func Moderate(ctx context.Context, log *slog.Logger, moderation updateModeration
 
 		err = moderation.UpdateStatus(ctx, req.Id, req.Status)
 		if err != nil {
-			handlers.MakeErrorResponse(w, r, log, "failed to update status", http.StatusBadRequest, requestId, err)
+			services.MakeErrorResponse(w, r, log, "failed to update status", http.StatusBadRequest, requestId, err)
 			return
 		}
 
 		flat, err := moderation.GetFlat(ctx, req.Id)
 		if err != nil {
-			handlers.MakeErrorResponse(w, r, log, "failed to find flat", http.StatusBadRequest, requestId, err)
+			services.MakeErrorResponse(w, r, log, "failed to find flat", http.StatusBadRequest, requestId, err)
 			return
 		}
 

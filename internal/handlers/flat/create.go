@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/handlers"
+	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/datasource/storage/structures"
+	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/services"
 	"github.com/dugtriol/backend-bootcamp-assignment-2024/pkg/response"
-	"github.com/dugtriol/backend-bootcamp-assignment-2024/pkg/storage/structures"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
 	"github.com/go-playground/validator/v10"
@@ -41,11 +41,11 @@ func Create(ctx context.Context, log *slog.Logger, saver houseSaver) http.Handle
 		// decode
 		err = render.DecodeJSON(r.Body, &req)
 		if errors.Is(err, io.EOF) {
-			handlers.MakeErrorResponse(w, r, log, "request body is empty", http.StatusBadRequest, requestId, err)
+			services.MakeErrorResponse(w, r, log, "request body is empty", http.StatusBadRequest, requestId, err)
 			return
 		}
 		if err != nil {
-			handlers.MakeErrorResponse(
+			services.MakeErrorResponse(
 				w,
 				r,
 				log,
@@ -71,13 +71,13 @@ func Create(ctx context.Context, log *slog.Logger, saver houseSaver) http.Handle
 
 		flat, err := saver.SaveFlat(ctx, req.HouseId, req.Price, req.Rooms)
 		if err != nil {
-			handlers.MakeErrorResponse(w, r, log, "failed to save flat to db", http.StatusBadRequest, requestId, err)
+			services.MakeErrorResponse(w, r, log, "failed to save flat to db", http.StatusBadRequest, requestId, err)
 			return
 		}
 		t := time.Now()
 		err = saver.UpdateDate(ctx, t, flat.HouseId)
 		if err != nil {
-			handlers.MakeErrorResponse(
+			services.MakeErrorResponse(
 				w,
 				r,
 				log,

@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/handlers"
+	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/datasource/storage/structures"
+	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/services"
 	"github.com/dugtriol/backend-bootcamp-assignment-2024/pkg/response"
-	"github.com/dugtriol/backend-bootcamp-assignment-2024/pkg/storage/structures"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
 	"github.com/go-playground/validator/v10"
@@ -39,11 +39,11 @@ func Login(ctx context.Context, log *slog.Logger, data getUser) http.HandlerFunc
 		// decode
 		err = render.DecodeJSON(r.Body, &req)
 		if errors.Is(err, io.EOF) {
-			handlers.MakeErrorResponse(w, r, log, "request body is empty", http.StatusBadRequest, requestId, err)
+			services.MakeErrorResponse(w, r, log, "request body is empty", http.StatusBadRequest, requestId, err)
 			return
 		}
 		if err != nil {
-			handlers.MakeErrorResponse(
+			services.MakeErrorResponse(
 				w,
 				r,
 				log,
@@ -69,7 +69,7 @@ func Login(ctx context.Context, log *slog.Logger, data getUser) http.HandlerFunc
 		id, err := uuid.Parse(req.Id)
 		if err != nil {
 			log.Error("failed to decode id")
-			handlers.MakeErrorResponse(
+			services.MakeErrorResponse(
 				w,
 				r,
 				log,
@@ -82,18 +82,18 @@ func Login(ctx context.Context, log *slog.Logger, data getUser) http.HandlerFunc
 		}
 		user, err := data.GetUserById(ctx, id)
 		if err != nil {
-			handlers.MakeErrorResponse(w, r, log, "failed to find user by id", http.StatusBadRequest, requestId, err)
+			services.MakeErrorResponse(w, r, log, "failed to find user by id", http.StatusBadRequest, requestId, err)
 			return
 		}
 
-		if err = checkPassword(req.Password, user.Password); err != nil {
-			handlers.MakeErrorResponse(w, r, log, "invalid password", http.StatusBadRequest, requestId, err)
+		if err = services.CheckPassword(req.Password, user.Password); err != nil {
+			services.MakeErrorResponse(w, r, log, "invalid password", http.StatusBadRequest, requestId, err)
 			return
 		}
 
-		jwtString, err := buildJWTString(user.Type)
+		jwtString, err := BuildJWTString(user.Type)
 		if err != nil {
-			handlers.MakeErrorResponse(w, r, log, "invalid jwt parse", http.StatusBadRequest, requestId, err)
+			services.MakeErrorResponse(w, r, log, "invalid jwt parse", http.StatusBadRequest, requestId, err)
 			return
 		}
 		log.Info("make token")

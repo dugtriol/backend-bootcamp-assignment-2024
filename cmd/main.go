@@ -7,13 +7,15 @@ import (
 	"os"
 	"time"
 
+	"github.com/allegro/bigcache/v3"
 	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/config"
+	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/datasource/cache"
+	strg "github.com/dugtriol/backend-bootcamp-assignment-2024/internal/datasource/storage"
 	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/handlers/auth"
 	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/handlers/flat"
 	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/handlers/house"
 	"github.com/dugtriol/backend-bootcamp-assignment-2024/pkg/db"
-	mwLogger "github.com/dugtriol/backend-bootcamp-assignment-2024/pkg/middleware/logger"
-	storage2 "github.com/dugtriol/backend-bootcamp-assignment-2024/pkg/storage"
+	mwLogger "github.com/dugtriol/backend-bootcamp-assignment-2024/pkg/middleware"
 	"github.com/go-chi/render"
 
 	"github.com/go-chi/chi/v5"
@@ -40,7 +42,12 @@ func main() {
 	defer database.GetPool(ctx).Close()
 
 	//storage
-	storage := storage2.New(database)
+	bigcache, err := bigcache.New(ctx, bigcache.DefaultConfig(10*time.Minute))
+	if err != nil {
+		log.Error(err.Error())
+	}
+
+	storage := cache.NewClient(log, bigcache, strg.New(database, log))
 	_ = storage
 
 	if err != nil {
@@ -68,14 +75,14 @@ func main() {
 
 	router.Group(
 		func(r chi.Router) {
-			r.Use(auth.JWTValidateMW(log))
+			r.Use(mwLogger.JWTValidateMW(log))
 
 			r.Post("/flat/create", flat.Create(ctx, log, storage))
 			r.Get("/house/{id}", house.GetList(ctx, log, storage))
 
 			r.Group(
 				func(c chi.Router) {
-					c.Use(auth.JWTValidateModeratorMW(log))
+					c.Use(mwLogger.JWTValidateModeratorMW(log))
 
 					c.Post("/house/create", house.Create(ctx, log, storage))
 					c.Post("/flat/update", flat.Moderate(ctx, log, storage))

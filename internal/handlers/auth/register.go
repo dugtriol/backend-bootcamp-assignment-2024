@@ -3,18 +3,16 @@ package auth
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 
-	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/handlers"
+	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/services"
 	"github.com/dugtriol/backend-bootcamp-assignment-2024/pkg/response"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type userRequest struct {
@@ -25,21 +23,6 @@ type userRequest struct {
 
 type userResponse struct {
 	Id string `json:"user_id"`
-}
-
-// hashPassword вынести
-func hashPassword(password string) (string, error) {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return "", fmt.Errorf("failed to hash password: %w", err)
-	}
-
-	return string(hashedPassword), nil
-}
-
-// checkPassword вынести
-func checkPassword(password string, hashedPassword string) error {
-	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }
 
 type userSaver interface {
@@ -60,11 +43,11 @@ func Register(ctx context.Context, log *slog.Logger, saver userSaver) http.Handl
 		// decode
 		err = render.DecodeJSON(r.Body, &req)
 		if errors.Is(err, io.EOF) {
-			handlers.MakeErrorResponse(w, r, log, "request body is empty", http.StatusBadRequest, requestId, err)
+			services.MakeErrorResponse(w, r, log, "request body is empty", http.StatusBadRequest, requestId, err)
 			return
 		}
 		if err != nil {
-			handlers.MakeErrorResponse(
+			services.MakeErrorResponse(
 				w,
 				r,
 				log,
@@ -87,16 +70,16 @@ func Register(ctx context.Context, log *slog.Logger, saver userSaver) http.Handl
 			return
 		}
 
-		password, err := hashPassword(req.Password)
+		password, err := services.HashPassword(req.Password)
 		if err != nil {
-			handlers.MakeErrorResponse(w, r, log, "failed to hash password", http.StatusBadRequest, requestId, err)
+			services.MakeErrorResponse(w, r, log, "failed to hash password", http.StatusBadRequest, requestId, err)
 			return
 		}
 
 		id, err := saver.SaveUser(ctx, req.Email, password, req.UserType)
 		if err != nil {
 			// email is already in db
-			handlers.MakeErrorResponse(w, r, log, "failed to save user in DB", http.StatusBadRequest, requestId, err)
+			services.MakeErrorResponse(w, r, log, "failed to save user in DB", http.StatusBadRequest, requestId, err)
 			return
 		}
 

@@ -2,20 +2,21 @@ package storage
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"time"
 
+	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/datasource/storage/structures"
 	"github.com/dugtriol/backend-bootcamp-assignment-2024/pkg/db"
-	"github.com/dugtriol/backend-bootcamp-assignment-2024/pkg/storage/structures"
 	"github.com/google/uuid"
 )
 
 type Storage struct {
-	db *db.Database
+	db  *db.Database
+	log *slog.Logger
 }
 
-func New(database *db.Database) *Storage {
-	return &Storage{db: database}
+func New(database *db.Database, log *slog.Logger) *Storage {
+	return &Storage{db: database, log: log}
 }
 
 func (r *Storage) SaveUser(ctx context.Context, email, password, userType string) (uuid.UUID, error) {
@@ -29,7 +30,7 @@ func (r *Storage) SaveUser(ctx context.Context, email, password, userType string
 		password,
 		userType,
 	); err != nil {
-		fmt.Println(err.Error())
+		r.log.Error("database: failed to save user")
 		return uuid.Nil, err
 	}
 
@@ -41,7 +42,7 @@ func (r *Storage) GetUserById(ctx context.Context, id uuid.UUID) (*structures.Us
 
 	err := r.db.Get(ctx, &a, "SELECT id,email,password,type FROM users WHERE id=$1", id)
 	if err != nil {
-		fmt.Println(err.Error())
+		r.log.Error("database: failed to get user by id")
 		return nil, err
 	}
 	return &a, nil
@@ -57,7 +58,7 @@ func (r *Storage) SaveHouse(ctx context.Context, address, developer string, year
 		year,
 	).Scan(&house.Id, &house.Address, &house.Year, &house.Developer, &house.CreatedAt, &house.UpdateAt)
 	if err != nil {
-		fmt.Println(err.Error())
+		r.log.Error("database: failed to save house")
 		return nil, err
 	}
 	return &house, err
@@ -72,6 +73,7 @@ func (r *Storage) GetHouse(ctx context.Context, id int) (*structures.House, erro
 		id,
 	)
 	if err != nil {
+		r.log.Error("database: failed to egt house")
 		return nil, err
 	}
 
@@ -89,6 +91,7 @@ func (r *Storage) SaveFlat(ctx context.Context, houseId, price, rooms int) (*str
 	).Scan(&flat.Id, &flat.HouseId, &flat.Price, &flat.Rooms, &flat.Status)
 
 	if err != nil {
+		r.log.Error("database: failed to save flat")
 		return nil, err
 	}
 	return &flat, nil
@@ -102,6 +105,7 @@ func (r *Storage) GetFlat(ctx context.Context, id int) (*structures.Flat, error)
 		"SELECT id,house_id,price,rooms,status FROM flats WHERE id=$1", id,
 	)
 	if err != nil {
+		r.log.Error("database: failed to get flat")
 		return nil, err
 	}
 	return &flat, nil
@@ -114,7 +118,11 @@ func (r *Storage) UpdateDate(ctx context.Context, time time.Time, id int) error 
 		time,
 		id,
 	)
-	return err
+	if err != nil {
+		r.log.Error("database: failed to update date")
+		return err
+	}
+	return nil
 }
 
 func (r *Storage) UpdateStatus(ctx context.Context, id int, status string) error {
@@ -124,7 +132,11 @@ func (r *Storage) UpdateStatus(ctx context.Context, id int, status string) error
 		status,
 		id,
 	)
-	return err
+	if err != nil {
+		r.log.Error("database: failed to update status")
+		return err
+	}
+	return nil
 }
 
 func (r *Storage) GetListByClient(ctx context.Context, id int) (*[]structures.Flat, error) {
@@ -134,6 +146,7 @@ func (r *Storage) GetListByClient(ctx context.Context, id int) (*[]structures.Fl
 		"SELECT id,house_id,price,rooms,status FROM flats WHERE house_id=$1 AND status=$2", id, status,
 	)
 	if err != nil {
+		r.log.Error("database: failed to get list by client", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -147,17 +160,20 @@ func (r *Storage) GetListByClient(ctx context.Context, id int) (*[]structures.Fl
 		flats = append(flats, flat)
 	}
 	if err = rows.Err(); err != nil {
+		r.log.Error("database: failed to get list by client", err)
 		return &flats, err
 	}
 	return &flats, nil
 }
 
 func (r *Storage) GetListByModerator(ctx context.Context, id int) (*[]structures.Flat, error) {
+	r.log.Info("database start")
 	rows, err := r.db.Query(
 		ctx,
 		"SELECT id,house_id,price,rooms,status FROM flats WHERE house_id=$1", id,
 	)
 	if err != nil {
+		r.log.Error("database: failed to get list by client", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -166,12 +182,15 @@ func (r *Storage) GetListByModerator(ctx context.Context, id int) (*[]structures
 	for rows.Next() {
 		var flat structures.Flat
 		if err := rows.Scan(&flat.Id, &flat.HouseId, &flat.Price, &flat.Rooms, &flat.Status); err != nil {
+			r.log.Error("database: failed to get list by client", err)
 			return &flats, err
 		}
 		flats = append(flats, flat)
 	}
 	if err = rows.Err(); err != nil {
+		r.log.Error("database: failed to get list by client", err)
 		return &flats, err
 	}
+	r.log.Info("database end")
 	return &flats, nil
 }

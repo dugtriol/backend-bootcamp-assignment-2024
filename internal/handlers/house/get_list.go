@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/handlers"
+	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/datasource/storage/structures"
 	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/handlers/auth"
-	"github.com/dugtriol/backend-bootcamp-assignment-2024/pkg/storage/structures"
+	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/services"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
@@ -24,7 +24,7 @@ type getList interface {
 	GetListByModerator(ctx context.Context, id int) (*[]structures.Flat, error)
 }
 
-type getListResponse struct {
+type GetListResponse struct {
 	Flats *[]structures.Flat `json:"flats"`
 }
 
@@ -40,7 +40,7 @@ func GetList(ctx context.Context, log *slog.Logger, getListFlats getList) http.H
 
 		id, err := strconv.Atoi(chi.URLParam(r, "id"))
 		if err != nil {
-			handlers.MakeErrorResponse(
+			services.MakeErrorResponse(
 				w,
 				r,
 				log,
@@ -54,7 +54,7 @@ func GetList(ctx context.Context, log *slog.Logger, getListFlats getList) http.H
 
 		_, err = getListFlats.GetHouse(ctx, id)
 		if err != nil {
-			handlers.MakeErrorResponse(w, r, log, "failed to find house", http.StatusBadRequest, requestId, err)
+			services.MakeErrorResponse(w, r, log, "failed to find house", http.StatusBadRequest, requestId, err)
 			return
 		}
 
@@ -73,11 +73,11 @@ func GetList(ctx context.Context, log *slog.Logger, getListFlats getList) http.H
 			flats = list
 		}
 		if err != nil {
-			handlers.MakeErrorResponse(w, r, log, "failed to get flats", http.StatusBadRequest, requestId, err)
+			services.MakeErrorResponse(w, r, log, "failed to get flats", http.StatusBadRequest, requestId, err)
 			return
 		}
 		fmt.Println("flats", flats)
-		listResponse := getListResponse{Flats: flats}
+		listResponse := GetListResponse{Flats: flats}
 		render.JSON(w, r, &listResponse)
 	}
 }

@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/handlers"
+	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/datasource/storage/structures"
+	"github.com/dugtriol/backend-bootcamp-assignment-2024/internal/services"
 	"github.com/dugtriol/backend-bootcamp-assignment-2024/pkg/response"
-	"github.com/dugtriol/backend-bootcamp-assignment-2024/pkg/storage/structures"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
 	"github.com/go-playground/validator/v10"
@@ -26,7 +26,6 @@ type houseSaver interface {
 	GetHouse(ctx context.Context, id int) (*structures.House, error)
 }
 
-// house/create
 func Create(ctx context.Context, log *slog.Logger, saver houseSaver) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req houseRequest
@@ -40,11 +39,11 @@ func Create(ctx context.Context, log *slog.Logger, saver houseSaver) http.Handle
 
 		err = render.DecodeJSON(r.Body, &req)
 		if errors.Is(err, io.EOF) {
-			handlers.MakeErrorResponse(w, r, log, "request body is empty", http.StatusBadRequest, requestId, err)
+			services.MakeErrorResponse(w, r, log, "request body is empty", http.StatusBadRequest, requestId, err)
 			return
 		}
 		if err != nil {
-			handlers.MakeErrorResponse(
+			services.MakeErrorResponse(
 				w,
 				r,
 				log,
@@ -69,7 +68,7 @@ func Create(ctx context.Context, log *slog.Logger, saver houseSaver) http.Handle
 
 		house, err := saver.SaveHouse(ctx, req.Address, req.Developer, req.Year)
 		if err != nil {
-			handlers.MakeErrorResponse(w, r, log, "failed to save house to db", http.StatusBadRequest, requestId, err)
+			services.MakeErrorResponse(w, r, log, "failed to save house to db", http.StatusBadRequest, requestId, err)
 			return
 		}
 
